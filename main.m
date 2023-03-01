@@ -18,4 +18,4 @@ tic;
 [Fground, Bground, alpha_val] = getBayesianMatte(img, trimap, img_obj);
 
 % Ending timer here
-toc
+toc;
