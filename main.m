@@ -8,13 +8,14 @@ img = imread("Images\input-small.png");
 trimap = imread("Images\trimap.png");
 
 % Converting both image files to double
-img = double(img);
-trimap = double(trimap);
+img = im2double(img);
+trimap = im2double(trimap);
 
 img_obj = initializeVariable();
 % Starting timer here
 tic;
-
 % Performing Bayesian Matting here
-[Fground, Bground, alpha_val] = getBayesianMatte(img, trimap, imj_obj);
+[Fground, Bground, alpha_val] = getBayesianMatte(img, trimap, img_obj);
 
+% Ending timer here
+toc
