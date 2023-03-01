@@ -1,23 +1,17 @@
-function [mu,Sigma]=orchardBoumannClustering(S,w,minVar)
+% Function to perform Orchard Boumann Clustering
+% Params:
+%   vector_val - vector
+%   weight_val - corresponding weights
+%   variance_lim - minimum variance threshold
+function [mu,Sigma]=orchardBoumannClustering(vector_val,weight_val,variance_lim)
 
-% Implements color clustering presented by Orchard and Bouman (1991)
-%   input:
-%   S - measurements vector
-%   w - corresponding weights
-%   returns:
-%   mu - cluster means
-%   Sigma - cluster covariances
-%
-%   Author: Michael Rubinstein
-%
-
-% initially, all measurements are one cluster
-C1.X=S;
-C1.w=w;
+% Initializing one big cluster
+C1.X=vector_val;
+C1.w=weight_val;
 C1=calc(C1);
-nodes=[C1];
+nodes=C1;
 
-while (max([nodes.lambda])>minVar)
+while (max([nodes.lambda])>variance_lim)
     nodes=split(nodes);
 end
 

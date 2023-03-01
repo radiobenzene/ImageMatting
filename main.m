@@ -2,10 +2,10 @@
 % Group - Atomic Reactors
 
 % Reading image
-img = imread("Images\input-small.png");
+img = imread("Images\bear\input.jpg");
 
 % Reading trimap 
-trimap = imread("Images\trimap.png");
+trimap = imread("Images\bear\trimap.png");
 
 % Converting both image files to double
 img = im2double(img);
@@ -16,9 +16,11 @@ img_obj = initializeVariable();
 tic;
 % Performing Bayesian Matting here
 [Fground, Bground, alpha_val] = getBayesianMatte(img, trimap, img_obj);
-
 % Generate composite image here
-composite_img = generateCompositeImage(Fground, Bground, alpha_val);
+newB = imread("Images\new_background.jfif");
+newB = im2double(newB);
+newB = imresize(newB, [282 420]);
+composite_img = generateCompositeImage(Fground, newB, alpha_val);
 % Ending timer here
 toc;
 

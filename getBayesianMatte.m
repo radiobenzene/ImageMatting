@@ -44,6 +44,7 @@ function [F, B, alpha_channel] = getBayesianMatte(img, trimap, c_obj)
 
         for i=1:length(Y)
             fprintf('Working on %d out of %d unknown points\n',n,unknown_points);
+            %imshow(alpha_channel);
 
             % Getting current pixel
             x=X(i); y=Y(i);

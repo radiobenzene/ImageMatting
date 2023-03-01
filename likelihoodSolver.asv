@@ -9,7 +9,7 @@
 %   initial_alpha_value - pre-set alpha value
 %   max_iterations - pre-set maximum iterations
 %   min_likelihood - pre-set minimum likelihood
-function [F,B,alpha_val]=likelihoodSolver(Fground_mean, ...
+function [F,B,alpha]=likelihoodSolver(Fground_mean, ...
     Fground_cov, ...
     Bground_mean, ...
     Bground_cov, ...
@@ -20,9 +20,7 @@ function [F,B,alpha_val]=likelihoodSolver(Fground_mean, ...
     min_likelihood)
   
 I=eye(3);
-
-% Initializing empty array that will have all values
-arr=[];
+vals=[];
 
 % Looping thround the clustered values
 for i = 1:size(Fground_mean, 2)
@@ -32,46 +30,45 @@ for i = 1:size(Fground_mean, 2)
     inverse_cov_i_Foreground = inv(Fground_cov(:,:,i));
             
     for j = 1:size(Bground_mean,2)
-
-        i_Bground_mean = Bground_mean(:,j);
-        inverse_cov_i_Background = inv(Bground_cov(:,:,j));
         
-        alpha_val = initial_alpha_val;
-        counter = 1;
-        % Setting likelihood to be as -maximum_val
+        mubi=Bground_mean(:,j);
+        invSigmabi=inv(Bground_cov(:,:,j));
+        
+        alpha=initial_alpha_val;
+        iter=1;
         lastLike=-realmax;
 
         while (true)
             
             % solve for F,B
-            part_A = inverse_cov_i_Foreground + I * (alpha_val ^ 2 / pixel_sigma ^ 2);
-            part_B = I * alpha_val * (1-alpha_val) / pixel_sigma ^ 2;
-            part_A_1 = I*((alpha_val*(1-alpha_val))/pixel_sigma^2);
-            A=[part_A , part_B; 
-                part_A_1, inverse_cov_i_Background+I*(1-alpha_val)^2/pixel_sigma^2];
+            A=[inverse_cov_i_Foreground+I*(alpha^2/pixel_sigma^2) , I*alpha*(1-alpha)/pixel_sigma^2; 
+               I*((alpha*(1-alpha))/pixel_sigma^2)  , invSigmabi+I*(1-alpha)^2/pixel_sigma^2];
              
-            b=[inverse_cov_i_Foreground*i_Fground_mean+pixel_val*(alpha_val/pixel_sigma^2); 
-               inverse_cov_i_Background*i_Bground_mean+pixel_val*((1-alpha_val)/pixel_sigma^2)];
+            b=[inverse_cov_i_Foreground*i_Fground_mean+pixel_val*(alpha/pixel_sigma^2); 
+               invSigmabi*mubi+pixel_val*((1-alpha)/pixel_sigma^2)];
            
             X=A\b;
             F=max(0,min(1,X(1:3)));
             B=max(0,min(1,X(4:6)));
             
             % solve for alpha
-            alpha_val=max(0,min(1,((pixel_val-B)'*(F-B))/sum((F-B).^2)));
+            alpha=max(0,min(1,((pixel_val-B)'*(F-B))/sum((F-B).^2)));
             
             % calculate likelihood
-            L_C=-sum((pixel_val-alpha_val*F-(1-alpha_val)*B).^2)/pixel_sigma;
+            L_C=-sum((pixel_val-alpha*F-(1-alpha)*B).^2)/pixel_sigma;
             L_F=-((F-i_Fground_mean)'*inverse_cov_i_Foreground*(F-i_Fground_mean))/2;
-            L_B=-((B-i_Bground_mean)'*inverse_cov_i_Background*(B-i_Bground_mean))/2;
+            L_B=-((B-mubi)'*invSigmabi*(B-mubi))/2;
             like=L_C+L_F+L_B;
             
-            if counter>=max_iterations || abs(like-lastLike)<=min_likelihood
+%             fprintf('like=%.2f, iter=%d\n',like,iter);
+%             z(iter)=like;
+            
+            if iter>=max_iterations || abs(like-lastLike)<=min_likelihood
                 break;
             end
             
             lastLike=like;
-            counter=counter+1;
+            iter=iter+1;
         end
         
         % we need only keep the maximal value, but for now we keep all
@@ -79,15 +76,15 @@ for i = 1:size(Fground_mean, 2)
         % later on
         val.F=F;
         val.B=B;
-        val.alpha=alpha_val;
+        val.alpha=alpha;
         val.like=like;
-        arr=[arr val];
+        vals=[vals val];
     end
 end
 
 % return maximum likelihood estimations
-[t,ind]=max([arr.like]);
-F=arr(ind).F;
-B=arr(ind).B;
-alpha_val=arr(ind).alpha;
+[t,ind]=max([vals.like]);
+F=vals(ind).F;
+B=vals(ind).B;
+alpha=vals(ind).alpha;
 
