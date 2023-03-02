@@ -47,47 +47,63 @@ for i = 1:size(Fground_mean, 2)
             part_A = inverse_cov_i_Foreground + I * (alpha_val ^ 2 / pixel_sigma ^ 2);
             part_B = I * alpha_val * (1-alpha_val) / pixel_sigma ^ 2;
             part_A_1 = I*((alpha_val*(1-alpha_val))/pixel_sigma^2);
+            part_B_1 = inverse_cov_i_Background+I*(1-alpha_val)^2/pixel_sigma^2;
             A=[part_A , part_B; 
-                part_A_1, inverse_cov_i_Background+I*(1-alpha_val)^2/pixel_sigma^2];
+                part_A_1, part_B_1];
              
-            b=[inverse_cov_i_Foreground*i_Fground_mean+pixel_val*(alpha_val/pixel_sigma^2); 
-               inverse_cov_i_Background*i_Bground_mean+pixel_val*((1-alpha_val)/pixel_sigma^2)];
+            b=[inverse_cov_i_Foreground * i_Fground_mean+pixel_val * (alpha_val/pixel_sigma^2); 
+               inverse_cov_i_Background * i_Bground_mean+pixel_val * ((1-alpha_val)/pixel_sigma^2)];
            
-            X=A\b;
-            F=max(0,min(1,X(1:3)));
-            B=max(0,min(1,X(4:6)));
+            % Solving for X
+            solution_val=A\b;
+            
+            % Storing values in F
+            F=max(0,min(1,solution_val(1:3)));
+
+            % Storing values in B
+            B=max(0,min(1,solution_val(4:6)));
             
             % solve for alpha
-            alpha_val=max(0,min(1,((pixel_val-B)'*(F-B))/sum((F-B).^2)));
+            alpha_val=max(0,min(1,((pixel_val-B)' * (F-B))/sum((F-B).^2)));
             
             % calculate likelihood
-            L_C=-sum((pixel_val-alpha_val*F-(1-alpha_val)*B).^2)/pixel_sigma;
-            L_F=-((F-i_Fground_mean)'*inverse_cov_i_Foreground*(F-i_Fground_mean))/2;
-            L_B=-((B-i_Bground_mean)'*inverse_cov_i_Background*(B-i_Bground_mean))/2;
-            like=L_C+L_F+L_B;
+            L_C_val = -sum((pixel_val - alpha_val * F - (1 - alpha_val) * B) .^ 2) / ...
+                pixel_sigma;
+            L_F_val = -((F - i_Fground_mean)' * inverse_cov_i_Foreground * ...
+                (F - i_Fground_mean))/2;
+            L_B=-((B-i_Bground_mean)'*inverse_cov_i_Background* ...
+                (B-i_Bground_mean))/2;
+
+            % Adding all three together
+            combined_likelihood= L_C_val + L_F_val + L_B;
             
-            if counter>=max_iterations || abs(like-lastLike)<=min_likelihood
+            % If reached limit, then break
+            if counter>=max_iterations || abs(combined_likelihood-lastLike)<=min_likelihood
                 break;
             end
             
-            lastLike=like;
+            lastLike=combined_likelihood;
             counter=counter+1;
         end
         
-        % we need only keep the maximal value, but for now we keep all
-        % values anyway as there are not many, and we can investigate them
-        % later on
+        % Updating our array structure to store values
         val.F=F;
         val.B=B;
         val.alpha=alpha_val;
-        val.like=like;
+        val.like=combined_likelihood;
         arr=[arr val];
     end
 end
 
-% return maximum likelihood estimations
-[t,ind]=max([arr.like]);
+% Get maximum likelihood values
+[~,ind]=max([arr.like]);
+
+% Determine F value
 F=arr(ind).F;
+
+% Determine B value
 B=arr(ind).B;
+
+% Determine alpha value
 alpha_val=arr(ind).alpha;
 
