@@ -67,14 +67,22 @@ class Node(object):
         self.e = D[np.argmax(np.abs(V))]
 
 
-# S is measurements vector - dim nxd
-# w is weights vector - dim n
-def clustFunc(S, w, minVar=0.05):
+'''
+    Function to perform Orchard Boumann Clustering
+    Params:
+        S: Pixel values
+        w: Weight values
+        min_Var: Minimum Variance for splitting
+    Returns:
+        mu: Mean
+        sigma: Variance
+'''
+def clusterElements(S, w, min_var=0.05):
     mu, sigma = [], []
     nodes = []
     nodes.append(Node(S, w))
 
-    while max(nodes, key=lambda x: x.lmbda).lmbda > minVar:
+    while max(nodes, key=lambda x: x.lmbda).lmbda > min_var:
         nodes = split(nodes)
 
     for i, node in enumerate(nodes):
@@ -83,7 +91,10 @@ def clustFunc(S, w, minVar=0.05):
 
     return np.array(mu), np.array(sigma)
 
-
+'''
+    Function to split a node
+    
+'''
 def split(nodes):
     idx_max = max(enumerate(nodes), key=lambda x: x[1].lmbda)[0]
     C_i = nodes[idx_max]
@@ -95,42 +106,47 @@ def split(nodes):
     nodes.append(C_b)
     return nodes
 
+
+'''
+Function for converting image to float and normalization
+Params:
+    img: Input image
+Returns:
+    normalized image
+'''
+def convertImage(img):
+    img = np.array(img,dtype = 'float')
+    img /= 255
+    return img
+
+
 '''
 Function to get Bayesian matte
     Params:
         img: Input image
         trimap: Trimap image
+        name: Image name
         N: default window size of 25
         variance: Gaussian sigma
         minN: minimum Neighbours
-'''
-def Bayesian_Matte(img,trimap,N = 25,sig = 8,minNeighbours = 10):
-    '''
-    def Bayesian_Matte(img,trimap,N = 25,sig = 8,minNeighbours = 10):
-    img - input image that the user will give to perform the foreground-background mapping
-    trimap - the alpha mapping that is given with foreground and background determined.
-    N - Window size, determines how many pixels will be sampled around the pixel to be solved, should be always odd.
-    sig - wieghts of the neighbouring pixels. less means more centered.
-    minNeighbours - Neigbour pixels available to solve, should be greater than 0, else inverse wont be calculated
-    '''
+    Returns:
+        the alpha matte
+
     
-    name = "GT07"
+'''
+def getBayesianMatte(img, trimap, name, N = 25,variance = 8,min_N = 10):
     image_trimap = np.array(ImageOps.grayscale(Image.open(os.path.join("Images","trimap_training_lowres","Trimap2", "{}.png".format(name)))))
 
     
-    # We Convert the Images to float so that we are able to play with the pixel values
-    img = np.array(img,dtype = 'float')
-    trimap = np.array(image_trimap, dtype = 'float')
+    # Converting image to float type
+    img = convertImage(img)
+    trimap = convertImage(trimap)
     
-    # Here we normalise the Images to range from 0 and 1.
-    img /= 255
-    trimap /= 255
-
-    # We get the dimensions 
+    # Getting dimensions of images
     h,w,c = img.shape
     
-    # Preparing the gaussian weights for window
-    gaussian_weights = fspecial((N,N),sig)
+    # Initializing Gaussian weighting
+    gaussian_weights = fspecial((N,N),variance)
     gaussian_weights /= np.max(gaussian_weights)
 
     # We seperate the foreground specified in the trimap from the main image.
@@ -191,12 +207,12 @@ def Bayesian_Matte(img,trimap,N = 25,sig = 8,minNeighbours = 10):
                 bg_weights = bg_weights[values_to_keep]
                 
                 # We come back to this pixel later if it doesnt has enough solved pixels around it.
-                if len(bg_weights) < minNeighbours or len(fg_weights) < minNeighbours:
+                if len(bg_weights) < min_N or len(fg_weights) < min_N:
                     continue
                 
                 # If enough pixels, we cluster these pixels to get clustered colour centers and their covariance    matrices
-                mean_fg, cov_fg = clustFunc(fg_pixels,fg_weights)
-                mean_bg, cov_bg = clustFunc(bg_pixels,bg_weights)
+                mean_fg, cov_fg = clusterElements(fg_pixels,fg_weights)
+                mean_bg, cov_bg = clusterElements(bg_pixels,bg_weights)
                 alpha_init = np.nanmean(a_window.ravel())
                 
                 # We try to solve our 3 equation 7 variable problem with minimum likelihood estimation
@@ -211,11 +227,9 @@ def Bayesian_Matte(img,trimap,N = 25,sig = 8,minNeighbours = 10):
                     print("Solved {} out of {}.".format(np.sum(not_visited[:,2]),len(not_visited)))
 
         if sum(not_visited[:,2]) == last_n:
-            # ChangingWindow Size
-            # Prepring the gaussian weights for window
             N += 2
-            sig += 1 
-            gaussian_weights = fspecial((N,N),sig)
+            variance += 1 
+            gaussian_weights = fspecial((N,N),variance)
             gaussian_weights /= np.max(gaussian_weights)
             print(N)
 
