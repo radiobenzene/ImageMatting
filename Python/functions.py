@@ -336,89 +336,104 @@ class initializeVariables:
     
     # Initialize Clustering variance
     clustering_variance = 0.05
-    
-    """ 
-        Function to calculate MSE
-        @FerniA
-    """
-#def getMSE(alpha_val, gt_img):
-#    gt_img = np.double(gt_img)
-#    gt_img = gt_img[:, :, 0]
-#    mse_val = compare_mse(alpha_val, gt_img)
-#    return mse_val
 
-
-## To solve individual pixels
+'''
+    Function to solve the Maximum Likelihood problem
+    Params:
+        mu_F: Mean of Foreground pixel
+        sigma_F: Covariance of Foreground pixel
+        mu_B: Mean of Background pixel
+        sigma_B: Covariance of Background pixel
+        C: Current pixel
+        sigma_C: pixel variance
+        alpha_init: Initial value of alpha
+        maxIter: Iterations to solve the value of the pixel, default value = 50
+        minLike: Minimum Likeihood to reach to stop the maxIterations, default value = 1e-6 
+'''
 def solve(mu_F, Sigma_F, mu_B, Sigma_B, C, Sigma_C, alpha_init, maxIter = 50, minLike = 1e-6):
-    """
-    mu_F - Mean of foreground pixel
-    Sigma_F - Covariance Mat of foreground pixel
-    mu_B, Sigma_B - Mean and Covariance of background pixel
-    C, Sigma_C - Current pixel, and its variance
-    alpha_init - starting alpha value
-    maxIter - Iterations to solve the value of the pixel
-    minLike - min likelihood to reach to stop before maxIterations. 
-    """
 
     # Initializing Matrices
     I = np.eye(3)
+    
+    # Initializing estimates for Foreground, Background and alpha
     fg_best = np.zeros(3)
     bg_best = np.zeros(3)
     a_best = np.zeros(1)
+    
+    # Initializing maximum likelihood
     maxlike = -np.inf
     
-    invsgma2 = 1/Sigma_C**2
+    # Initializing imverse variance
+    invsgma2 = 1 / Sigma_C**2
     
     for i in range(mu_F.shape[0]):
-        # Mean of Foreground pixel can have multiple possible values, iterating for all.
+        
+        # Iterating through all values of mean and covariance
         mu_Fi = mu_F[i]
         invSigma_Fi = np.linalg.inv(Sigma_F[i])
 
         for j in range(mu_B.shape[0]):
-            # Similarly, multiple mean values be possible for background pixel.
+            
+            # Iterating through all values of mean and covariance
             mu_Bj = mu_B[j]
             invSigma_Bj = np.linalg.inv(Sigma_B[j])
 
+            # Setting alpha values
             alpha = alpha_init
+            
+            # Initializing iterator
             myiter = 1
+            
+            # Initializing last likelihood
             lastLike = -1.7977e+308
 
-            # Solving Minimum likelihood through numerical methods
+            
             while True:
-                # Making Equations for AX = b, where we solve for X.abs
-                # X here has 3 values of forground pixel (RGB) and 3 values for background
+                
+                # Solving the equation: Ax = b, where x has 3 values - RGB
                 A = np.zeros((6,6))
                 A[:3,:3] = invSigma_Fi + I*alpha**2 * invsgma2
                 A[:3,3:] = A[3:,:3] = I*alpha*(1-alpha) * invsgma2
                 A[3:,3:] = invSigma_Bj+I*(1-alpha)**2 * invsgma2
                 
+                # Initializing the B vectors
                 b = np.zeros((6,1))
                 b[:3] = np.reshape(invSigma_Fi @ mu_Fi + C*(alpha) * invsgma2,(3,1))
                 b[3:] = np.reshape(invSigma_Bj @ mu_Bj + C*(1-alpha) * invsgma2,(3,1))
 
-                # Solving for X and storing values for Forground and Background Pixels 
+                # Solving for X
                 X = np.linalg.solve(A, b)
+                
+                # Store the calculated values into F and B vectors
                 F = np.maximum(0, np.minimum(1, X[0:3]))
                 B = np.maximum(0, np.minimum(1, X[3:6]))
                 
-                # Solving for value of alpha once F and B are calculated
+                # Solving for alpha 
                 alpha = np.maximum(0, np.minimum(1, ((np.atleast_2d(C).T-B).T @ (F-B))/np.sum((F-B)**2)))[0,0]
                 
-                # Calculating likelihood value for
+                # Calculating Likelihood for alphas
                 like_C = - np.sum((np.atleast_2d(C).T -alpha*F-(1-alpha)*B)**2) * invsgma2
+                
+                # Calculating Foreground likelihood for foreground and background
                 like_fg = (- ((F- np.atleast_2d(mu_Fi).T).T @ invSigma_Fi @ (F-np.atleast_2d(mu_Fi).T))/2)[0,0]
                 like_bg = (- ((B- np.atleast_2d(mu_Bj).T).T @ invSigma_Bj @ (B-np.atleast_2d(mu_Bj).T))/2)[0,0]
+                
+                # Calculating the likelihood as a sum
                 like = (like_C + like_fg + like_bg)
 
+                # Setting condition to check maximum likelihood
                 if like > maxlike:
                     a_best = alpha
                     maxlike = like
                     fg_best = F.ravel()
                     bg_best = B.ravel()
 
+                # Setting condition for exiting loop execution
                 if myiter >= maxIter or abs(like-lastLike) <= minLike:
                     break
 
                 lastLike = like
                 myiter += 1
+                
+                # Returning optimal foreground, background and alpha values
     return fg_best, bg_best, a_best
