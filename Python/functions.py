@@ -8,7 +8,9 @@ import matplotlib.pyplot as plt
 from PIL import Image, ImageOps
 import numpy as np
 import os
-
+from tqdm import tqdm
+import time
+from numba import jit 
 """
 Function to display Image
 Params:
@@ -17,6 +19,7 @@ Params:
 Returns:
     Image box with a title 
 """
+
 def displayImage(title, img):
     plt.show(img)
     plt.title(title)
@@ -30,6 +33,7 @@ def displayImage(title, img):
     Returns:
         Gaussian distribution with sigma 
 """
+
 def fspecial(shape, variance):
     
     # Setting N_1 and N_2
@@ -77,6 +81,7 @@ class Node(object):
         mu: Mean
         sigma: Variance
 '''
+
 def clusterElements(S, w, min_var=0.05):
     mu, sigma = [], []
     nodes = []
@@ -95,6 +100,7 @@ def clusterElements(S, w, min_var=0.05):
     Function to split a node
     
 '''
+
 def split(nodes):
     idx_max = max(enumerate(nodes), key=lambda x: x[1].lmbda)[0]
     C_i = nodes[idx_max]
@@ -114,6 +120,7 @@ Params:
 Returns:
     normalized image
 '''
+
 def convertImage(img):
     img = np.array(img,dtype = 'float')
     img /= 255
@@ -172,7 +179,7 @@ def getBayesianMatte(img, trimap, name, N = 25,variance = 8,min_N = 10):
     A,B = np.where(unknown_map == True)
     not_visited = np.vstack((A,B,np.zeros(A.shape))).T
 
-    print("Solving Image with {} unsovled pixels... Please wait...".format(len))
+    print("Processing Image")
 
     # running till all the pixels are solved.
     while(sum(not_visited[:,2]) != n_unknown):
@@ -225,24 +232,16 @@ def getBayesianMatte(img, trimap, name, N = 25,variance = 8,min_N = 10):
                 not_visited[i,2] = 1
                 if(np.sum(not_visited[:,2])%1000 == 0):
                     print("Solved {} out of {}.".format(np.sum(not_visited[:,2]),len(not_visited)))
+                    pass
 
         if sum(not_visited[:,2]) == last_n:
             N += 2
             variance += 1 
             gaussian_weights = fspecial((N,N),variance)
             gaussian_weights /= np.max(gaussian_weights)
-            print(N)
+            #print(N)
 
     return a_channel
-
- 
-"""
-Function to display image
-"""
-def displayImage(title, img):
-    cv2.imshow(title, img)
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
 
 """
 Function to run a window
@@ -274,52 +273,6 @@ def runWindow(img_area, x, y, N):
 
     return window
 
-class Node(object):
-
-    def __init__(self, matrix, w):
-        W = np.sum(w)
-        self.w = w
-        self.X = matrix
-        self.left = None
-        self.right = None
-        self.mu = np.einsum('ij,i->j', self.X, w)/W
-        diff = self.X - np.tile(self.mu, [(self.X.shape)[0], 1])
-        t = np.einsum('ij,i->ij', diff, np.sqrt(w))
-        self.cov = (t.T @ t)/W + 1e-5*np.eye(3)
-        self.N = self.X.shape[0]
-        V, D = np.linalg.eig(self.cov)
-        self.lmbda = np.max(np.abs(V))
-        self.e = D[np.argmax(np.abs(V))]
-
-
-# S is measurements vector - dim nxd
-# w is weights vector - dim n
-def clustFunc(S, w, minVar=0.05):
-    mu, sigma = [], []
-    nodes = []
-    nodes.append(Node(S, w))
-
-    while max(nodes, key=lambda x: x.lmbda).lmbda > minVar:
-        nodes = split(nodes)
-
-    for i, node in enumerate(nodes):
-        mu.append(node.mu)
-        sigma.append(node.cov)
-
-    return np.array(mu), np.array(sigma)
-
-
-def split(nodes):
-    idx_max = max(enumerate(nodes), key=lambda x: x[1].lmbda)[0]
-    C_i = nodes[idx_max]
-    idx = C_i.X @ C_i.e <= np.dot(C_i.mu, C_i.e)
-    C_a = Node(C_i.X[idx], C_i.w[idx])
-    C_b = Node(C_i.X[np.logical_not(idx)], C_i.w[np.logical_not(idx)])
-    nodes.pop(idx_max)
-    nodes.append(C_a)
-    nodes.append(C_b)
-    return nodes
-    
 # Defining class to initialize variables
 class initializeVariables:
     # Initialize Window Size
@@ -350,6 +303,7 @@ class initializeVariables:
         maxIter: Iterations to solve the value of the pixel, default value = 50
         minLike: Minimum Likeihood to reach to stop the maxIterations, default value = 1e-6 
 '''
+
 def solve(mu_F, Sigma_F, mu_B, Sigma_B, C, Sigma_C, alpha_init, maxIter = 50, minLike = 1e-6):
 
     # Initializing Matrices
@@ -455,6 +409,7 @@ def main(img_name):
     image_trimap = np.array(ImageOps.grayscale(TRIMAP_PATH))
     
     # Calculating alpha matte
+    #for i in tqdm(range(101), desc="Generating Matte", ascii=False, ncols=75):
     alpha = getBayesianMatte(image, image_trimap,  img_name, img_obj.N, img_obj.sigma, img_obj.min_N) 
     
     # Displaying alpha matte
