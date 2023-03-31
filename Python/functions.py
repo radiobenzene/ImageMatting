@@ -445,12 +445,14 @@ def main(img_name):
     # Creating image object
     img_obj = initializeVariables()
     
-    # Creating image path
-    os.path.join("Images","input_training_lowres","{}.png".format(img_name))
-    image = np.array(Image.open(os.path.join("Images","input_training_lowres","{}.png".format(img_name))))
+    # Creating path
+    IMG_PATH = os.path.join("Images","input_training_lowres","{}.png".format(img_name))
+    TRIMAP_PATH = Image.open(os.path.join("Images","trimap_training_lowres", "Trimap2", "{}.png".format(img_name)))
+    
+    image = np.array(Image.open(IMG_PATH))
     
     # Creating trimap path
-    image_trimap = np.array(ImageOps.grayscale(Image.open(os.path.join("Images","trimap_training_lowres", "Trimap2", "{}.png".format(img_name)))))
+    image_trimap = np.array(ImageOps.grayscale(TRIMAP_PATH))
     
     # Calculating alpha matte
     alpha = getBayesianMatte(image, image_trimap,  img_name, img_obj.N, img_obj.sigma, img_obj.min_N) 
