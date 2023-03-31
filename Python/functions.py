@@ -233,7 +233,7 @@ def getBayesianMatte(img, trimap, name, N = 25,variance = 8,min_N = 10):
             gaussian_weights /= np.max(gaussian_weights)
             print(N)
 
-    return a_channel,n_unknown
+    return a_channel
 
  
 """
@@ -437,3 +437,17 @@ def solve(mu_F, Sigma_F, mu_B, Sigma_B, C, Sigma_C, alpha_init, maxIter = 50, mi
                 
                 # Returning optimal foreground, background and alpha values
     return fg_best, bg_best, a_best
+
+'''
+Main Function
+'''
+def main(img_name):
+    # Creating path to image
+    img_obj = initializeVariables()
+    os.path.join("Images","input_training_lowres","{}.png".format(img_name))
+    image = np.array(Image.open(os.path.join("Images","input_training_lowres","{}.png".format(img_name))))
+    image_trimap = np.array(ImageOps.grayscale(Image.open(os.path.join("Images","trimap_training_lowres", "Trimap2", "{}.png".format(img_name)))))
+    alpha = getBayesianMatte(image, image_trimap,  img_name, img_obj.N, img_obj.sigma, img_obj.min_N) 
+    #alpha_int8 = np.array(alpha,dtype = int)
+    displayImage('Title', alpha)
+    
