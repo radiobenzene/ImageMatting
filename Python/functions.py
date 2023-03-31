@@ -442,12 +442,19 @@ def solve(mu_F, Sigma_F, mu_B, Sigma_B, C, Sigma_C, alpha_init, maxIter = 50, mi
 Main Function
 '''
 def main(img_name):
-    # Creating path to image
+    # Creating image object
     img_obj = initializeVariables()
+    
+    # Creating image path
     os.path.join("Images","input_training_lowres","{}.png".format(img_name))
     image = np.array(Image.open(os.path.join("Images","input_training_lowres","{}.png".format(img_name))))
+    
+    # Creating trimap path
     image_trimap = np.array(ImageOps.grayscale(Image.open(os.path.join("Images","trimap_training_lowres", "Trimap2", "{}.png".format(img_name)))))
+    
+    # Calculating alpha matte
     alpha = getBayesianMatte(image, image_trimap,  img_name, img_obj.N, img_obj.sigma, img_obj.min_N) 
-    #alpha_int8 = np.array(alpha,dtype = int)
-    displayImage('Title', alpha)
+    
+    # Displaying alpha matte
+    displayImage('Alpha Matte', alpha)
     
