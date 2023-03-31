@@ -4,9 +4,9 @@ import numpy as np
 from PIL import Image, ImageOps
 import matplotlib.pyplot as plt
 import os
+import sys
 
-
-image_name = "GT06"
+n = len(sys.argv)
+image_name = sys.argv[1]
 
 main(image_name)
-
