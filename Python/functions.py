@@ -211,6 +211,7 @@ def getBayesianMatte(img, trimap, name, N = 25,variance = 8,min_N = 10):
                 
                 values_to_keep = np.nan_to_num(foreground_weights) > 0
                 
+                # Restructuring Foreground pixels
                 foreground_pixels = np.reshape(foreground_window,(-1,3))[values_to_keep,:]
                 foreground_weights = foreground_weights[values_to_keep]
         
@@ -220,6 +221,7 @@ def getBayesianMatte(img, trimap, name, N = 25,variance = 8,min_N = 10):
                 
                 values_to_keep = np.nan_to_num(background_weights) > 0
                 
+                # Restructuring Background pixels
                 background_pixels = np.reshape(background_window,(-1,3))[values_to_keep,:]
                 background_weights = background_weights[values_to_keep]
                 
@@ -256,12 +258,15 @@ def getBayesianMatte(img, trimap, name, N = 25,variance = 8,min_N = 10):
                     pass
 
         if sum(list_not_visited_points[:,2]) == last_n:
+            # Increasing window size
             N += 2
+            
+            # Increasing variance
             variance += 1 
+            
+            # Applying Gaussian weighting 
             gaussian_weights = fspecial((N,N),variance)
             gaussian_weights /= np.max(gaussian_weights)
-            #print(N)
-
     return a_channel
 
 """
