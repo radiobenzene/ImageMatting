@@ -418,6 +418,49 @@ def solve(mu_F, Sigma_F, mu_B, Sigma_B, C, Sigma_C, alpha_init, maxIter = 50, mi
                 # Returning optimal foreground, background and alpha values
     return fg_best, bg_best, a_best
 
+
+#computeMSE
+def getMSE(alpha_val, gt_img):
+    gt_img = np.double(gt_img)
+    gt_img = gt_img[:, :, 0]
+    mse_val = mean_squared_error(alpha_val, gt_img)
+    return mse_val
+
+#computeSAD
+def getSAD(alpha_val, gt_img):
+    gt_img = np.double(gt_img)
+    gt_img = gt_img[:, :, 0]
+    sad_val = np.sum(np.abs(alpha_val - gt_img))
+    return sad_val
+
+ #compute execution time of the first 10 pictures
+ def execution_time(func, images, num_images):
+   for i in range(10):
+    start_time = time.time()
+    matte = getBayesianMatte(images[i])
+    end_time = time.time()
+    execution_time = end_time - start_time
+    print(f"Execution time for image {i+1}: {execution_time:.4f} seconds")
+        
+        
+ #composite image       
+ def composite(alpha, foreground, background):
+    # Convert the alpha matte to a 3-channel grayscale image
+    alpha = np.repeat(alpha[:, :, np.newaxis], 3, axis=2)
+    
+    # Compute the composite image
+    composite = alpha * foreground + (1 - alpha) * background
+    
+    # Clip the pixel values to the range [0, 1]
+    composite = np.clip(composite, 0, 1)
+    
+    # Display the composite image
+    plt.imshow(composite)
+    plt.axis('off')
+    plt.show()
+    
+    return composite
+
 '''
 Main Function
 '''
