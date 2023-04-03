@@ -37,7 +37,7 @@ def displayImage(title, img):
     Returns:
         Gaussian distribution with sigma 
 """
-
+#
 def fspecial(shape, variance):
     
     # Setting N_1 and N_2
