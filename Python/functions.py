@@ -11,6 +11,7 @@ import os
 from tqdm import tqdm
 import time
 from numba import jit 
+from skimage.metrics import peak_signal_noise_ratio
 """
 Function to display Image
 Params:
@@ -432,6 +433,13 @@ def getSAD(alpha_val, gt_img):
     gt_img = gt_img[:, :, 0]
     sad_val = np.sum(np.abs(alpha_val - gt_img))
     return sad_val
+
+#computing PSNR
+def getPSNR(alpha_val, gt_img, max_val=1.0):
+    gt_img = np.double(gt_img)
+    gt_img = gt_img[:, :, 0]
+    psnr_val = peak_signal_noise_ratio(gt_img, alpha_val, data_range=max_val)
+    return psnr_val
 
  #compute execution time of the first 10 pictures
  def execution_time(func, images, num_images):
