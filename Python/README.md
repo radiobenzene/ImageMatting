@@ -1,6 +1,19 @@
 # **Bayesian Matting**
+The current project is a Python implementation of the paper published by Y.Y. Chuang, B. Curless, D. Salesin, R. Szeliski, A Bayesian Approach to Digital Matting.
+Conference on Computer Vision and Pattern Recognition (CVPR), 2001.
 
-# Introduction
+# Group Details
+* Group Name: Atomic Reactors
+* Group Members and Tasks: 
+  * Haohan Zhu -  QA, Testing, Interface Assembly
+  * Alessandro Ferni - Quality Metrics, Image Compositing, Stress Testing
+  * Uditangshu Aurangabadkar - Algorithmic Implementation, Stress Testing, UAT
+# Implementation Specifics
+## Pip Requirements
+A list of all the required libraries can be found in the file `requirements.txt` or can be downloaded using the command
+```
+pip install -r requirements.txt
+```
 
 # Algorithm Design
 
