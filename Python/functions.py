@@ -11,6 +11,8 @@ import os
 from tqdm import tqdm
 import time
 from numba import jit 
+from skimage import *
+from skimage.metrics import mean_squared_error
 """
 Function to display Image
 Params:
@@ -420,10 +422,11 @@ def solve(mu_F, Sigma_F, mu_B, Sigma_B, C, Sigma_C, alpha_init, maxIter = 50, mi
 
 
 #computeMSE
+
 def getMSE(alpha_val, gt_img):
     gt_img = np.double(gt_img)
     gt_img = gt_img[:, :, 0]
-    mse_val = mean_squared_error(alpha_val, gt_img)
+    mse_val = np.mean(np.square(alpha_val/255 - gt_img/255))
     return mse_val
 
 #computeSAD
@@ -434,7 +437,7 @@ def getSAD(alpha_val, gt_img):
     return sad_val
 
  #compute execution time of the first 10 pictures
- def execution_time(func, images, num_images):
+def execution_time(func, images, num_images):
    for i in range(10):
     start_time = time.time()
     matte = getBayesianMatte(images[i])
@@ -444,7 +447,7 @@ def getSAD(alpha_val, gt_img):
         
         
  #composite image       
- def composite(alpha, foreground, background):
+def composite(alpha, foreground, background):
     # Convert the alpha matte to a 3-channel grayscale image
     alpha = np.repeat(alpha[:, :, np.newaxis], 3, axis=2)
     
@@ -461,6 +464,9 @@ def getSAD(alpha_val, gt_img):
     
     return composite
 
+def getMean(image, image_reference):
+    mse = np.sum(np.square(image - image_reference))/np.size(image)
+    return mse
 '''
 Main Function
 '''
@@ -481,7 +487,22 @@ def main(img_name):
     #for i in tqdm(range(101), desc="Generating Matte", ascii=False, ncols=75):
     alpha = getBayesianMatte(image, image_trimap,  img_name, img_obj.N, img_obj.sigma, img_obj.min_N) 
     
+    # This GT is for SAD
+    GT_alpha = Image.open(os.path.join("Images","gt_training_lowres", "{}.png".format(img_name)))
+    
+    # This GT is for MSE
+    #GT_alpha = cv2.imread('Images/gt_training_lowres/GT27.png')[:, :, 1]
+    #GT_alpha = GT_alpha[:, :, 1]
+    GT_alpha = convertImage(GT_alpha)
+    filename = 'savedImage.jpg'
+    
+    #SAD_value = getSAD(alpha, GT_alpha)
+    MSE_value = getMean(alpha, GT_alpha)
+    
+    #print(SAD_value)
+    print(MSE_value)
+    #cv2.imwrite(filename, alpha)
     # Displaying alpha matte
-    displayImage('Alpha Matte', alpha)
+    #displayImage('Alpha Matte', alpha)
     #displayImage('Foreground', F)
     
