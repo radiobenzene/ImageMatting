@@ -557,7 +557,7 @@ def composition(sub_dir_path, foreground_array, alpha_array):
     User can choose a new image as background
     And the system will composite the foreground and new background
     """
-    background_path = filedialog.askopenfilename(filetypes=[("Background Selection", "*.jpg;*.png;*.bmp")])
+    background_path = filedialog.askopenfilename(filetypes=[("Background Selection", "*.jpg;*.png;*.bmp")], title='Select Background Image')
     background_image = Image.open(background_path)
     
     background_array = np.array(background_image)
