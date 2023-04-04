@@ -1,22 +1,18 @@
 from cv2 import *
 from functions import *
+import numpy as np
+from PIL import Image, ImageOps
+import matplotlib.pyplot as plt
+import os
+import sys
+from tqdm import tqdm
 
-# Reading image
-img = cv2.imread("Images/input_training_lowres/GT05.png")
+# n = len(sys.argv)
+# image_name = sys.argv[1]
 
-# Reading trimap
-trimap = cv2.imread("Images/trimap_training_lowres/Trimap1/GT05.png")
 
-# Reading Ground Truth image
-GT_img = cv2.imread("Images/gt_training_lowres/GT05.png")
+# main(img_name = "GT01", user_selecr = False, save = False, show_FG = False, compositing = False)
+# main(user_selecr = False, save = True, show_FG = True, compositing= True)
+# main(user_selecr = True, save = True, show_FG = True, compositing= True)
 
-# Converting images to double
-img = img.astype(float) / 255.0
-trimap = trimap.astype(float) / 255.0
-
-# Calling image object
-img_obj = initializeVariables()
-
-[height, width, c] = img.shape
-A = getMSE(1, 2)
-print(A)
+execution_longSeq()
