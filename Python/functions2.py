@@ -583,15 +583,16 @@ def composition(sub_dir_path, foreground_array, alpha_array):
 
 
 '''
-Main Function
+Main Engine function
+Parameters:
+    img_name: By default, GT01
+    user_selector: Flag for selecting image, default: False
+    save: Flag for saving image or not, default: False
+    show_FG: Flag to show image or not, default: False
+    compositing: Flag to composite image or not, default: False
+    
 '''
 def main(img_name = "GT01.png", user_selector = False, save = False, show_FG = False, compositing = False):
-    """
-    The default image is GT01.png, if set user_selector is True, 
-    the user can choose image by themselves.
-
-    Note: If user want to composite image, he must open 'save', 'show_FG' switch
-    """
     # Creating image object
     img_obj = initializeVariables()
     
@@ -600,8 +601,8 @@ def main(img_name = "GT01.png", user_selector = False, save = False, show_FG = F
         IMG_PATH = os.path.join("Images","input_training_lowres","{}".format(img_name))
         TRIMAP_PATH = Image.open(os.path.join("Images","trimap_training_lowres", "Trimap2", "{}".format(img_name)))
     else:
-        IMG_PATH = filedialog.askopenfilename(filetypes=[("Source Image Selection", "*.jpg;*.png;*.bmp")])
-        TRIMAP_PATH = filedialog.askopenfilename(filetypes=[("Trimap Selection", "*.jpg;*.png;*.bmp")])
+        IMG_PATH = filedialog.askopenfilename(filetypes=[("Source Image Selection", "*.jpg;*.png;*.bmp")], title='Select Original Image')
+        TRIMAP_PATH = filedialog.askopenfilename(filetypes=[("Trimap Selection", "*.jpg;*.png;*.bmp")], title='Select Trimap')
 
         TRIMAP_PATH = Image.open(TRIMAP_PATH)
         
