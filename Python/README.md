@@ -1,7 +1,7 @@
 ## **Bayesian Matting**
 
 
-*Group: Haohan Zhu, Alessandro Ferni, Uditangshu Aurangabadkar*
+*Group: Haohan Zhu, ...*
 
 
 # Unit test Result

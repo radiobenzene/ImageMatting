@@ -497,12 +497,12 @@ def main(img_name):
     filename = 'savedImage.jpg'
     
     #SAD_value = getSAD(alpha, GT_alpha)
-    MSE_value = getMean(alpha, GT_alpha)
+    #MSE_value = getMean(alpha, GT_alpha)
     
     #print(SAD_value)
-    print(MSE_value)
+    #print(MSE_value)
     #cv2.imwrite(filename, alpha)
     # Displaying alpha matte
-    #displayImage('Alpha Matte', alpha)
+    displayImage('Alpha Matte', alpha)
     #displayImage('Foreground', F)
     

@@ -507,7 +507,7 @@ def save_images(alpha):
     and it can save result in /base_dir/exp
     Exp folder will be updated after executed each time
     """
-    base_dir = 'Python/Result'
+    base_dir = 'Result'
     if not os.path.exists(base_dir):
         os.mkdir(base_dir)
     # find the last subdirectory with a name that matches the pattern "exp<suffix>"
@@ -616,7 +616,7 @@ def main(img_name = "GT01.png", user_selector = False, save = False, show_FG = F
 
     # Displaying alpha matte
     displayImage('Alpha Matte', alpha)
-
+    
     if save:
         sub_dir_path = save_images(alpha)
         if show_FG:
@@ -628,6 +628,7 @@ def main(img_name = "GT01.png", user_selector = False, save = False, show_FG = F
                 axarr[0,0] = plt.imshow(alpha)
                 axarr[0,1] = plt.imshow(foreground_image)
                 axarr[0,2] = plt.imshow(composition_img)
+    
 
 
 

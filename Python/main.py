@@ -12,7 +12,10 @@ n = len(sys.argv)
 image_name = sys.argv[1]
 
 #for i in tqdm(range(100), desc="Generating Matte", ascii=False, ncols=75):
+start_time = time.time()
 main(image_name)
+
+print("--- %s seconds ---" % (time.time() - start_time))
     #sleep(0.01)
     
 
