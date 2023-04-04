@@ -11,8 +11,7 @@ import os
 from tqdm import tqdm
 import time
 from numba import jit 
-from skimage import *
-from skimage.metrics import mean_squared_error
+from tkinter import filedialog
 """
 Function to display Image
 Params:
@@ -144,11 +143,10 @@ Function to get Bayesian matte
         minN: minimum Neighbours
     Returns:
         the alpha matte
-
     
 '''
 def getBayesianMatte(img, trimap, name, N = 25,variance = 8,min_N = 10):
-    image_trimap = np.array(ImageOps.grayscale(Image.open(os.path.join("Images","trimap_training_lowres","Trimap2", "{}.png".format(name)))))
+    image_trimap = np.array(ImageOps.grayscale(Image.open(os.path.join("Images","trimap_training_lowres","Trimap2", "{}".format(name)))))
 
     
     # Converting image to float type
@@ -270,53 +268,6 @@ def getBayesianMatte(img, trimap, name, N = 25,variance = 8,min_N = 10):
             gaussian_weights = fspecial((N,N),variance)
             gaussian_weights /= np.max(gaussian_weights)
     return a_channel
-=======
-from skimage.measure import compare_mse
-
-"""
-    Function to get Bayesian Matte
-    Params:
-        img - image
-        trimap - trimap
-        img_obj - image object containing parameters
-"""
-def getBayesianMatte(img, trimap, img_obj):
-    
-    # Setting masks for foreground, background and unknown
-    background_mask = (trimap == 0) # Background where trimap values = 0
-    foreground_mask = (trimap == 1) # Foreground where trimap values = 1
-    unknown_area_mask = ~(background_mask | foreground_mask) # If neither, then unknown
-    
-    # Initializing Foreground
-    F = img.copy()
-    F[~foreground_mask.repeat(3).reshape(foreground_mask.shape)] = 0
-
-    # Initializing Background
-    B = img.copy()
-    B[~background_mask.repeat(3).reshape(background_mask.shape)] = 0
-    
-    # Initializing Alpha channel
-    alpha_channel = np.zeros(trimap.shape)
-    alpha_channel[foreground_mask] = 1
-    alpha_channel[unknown_area_mask] = np.nan
-    
-    # Initializing unknown points
-    unknown_points = np.sum(unknown_area_mask)
-    
-    # Gaussian Weighting parameter
-    gaussian_weighting = gaussian(img_obj.N, img_obj.sigma).reshape(-1, 1) * gaussian(img_obj.N, img_obj.sigma).reshape(1, -1)
-    
-    # Normalizing gaussian weighting
-    gaussian_weighting = gaussian_weighting / np.max(gaussian_weighting)
-    
-    # square structuring element for eroding the unknown region(s)
-    se = square(3)
-    
-    n = 1
-    unknown_region=unknown_area_mask
-    iter = 1
-
-
 
 """
 Function to run a window
@@ -326,7 +277,6 @@ Params:
     N - window size
 """
 def runWindow(img_area, x, y, N):
-
     
     # Get image dimensions 
     height, width, channels = img_area.shape
@@ -356,52 +306,11 @@ class initializeVariables:
     
     # Initialize Variance for Gaussian weighting
     sigma = 8; ###0.5
-=======
-    # Get dimensions of the image
-    [height, width, c] = img_area.shape
-    
-    # Initializing window size
-    half_win_size = math.floor(N / 2)
-    N_1 = half_win_size
-    N_2 = N - half_win_size - 1
-    
-    # Initializing window value
-    window_val = np.empty((N, N, c))
-    window_val[:] = np.nan
-    
-    # Setting min and max values for x-axis
-    x_min = max(1, x - N_1)
-    x_max = min(width, x + N_2)
-    
-    # Setting min and max values for y-axis
-    y_min = max(1, y - N_1)
-    y_max = min(height, y + N_2)
-    
-    # Getting pixel values for x coordinates (min and max)
-    pixel_x_min = half_win_size - (x - x_min) + 1 
-    pixel_x_max = half_win_size + (x_max - x) + 1
-    
-    # Getting pixel values for y coordinates (min and max)
-    pixel_y_min = half_win_size - (y - y_min) + 1 
-    pixel_y_max = half_win_size + (y_max - y) + 1
-    
-    # Setting window values
-    window_val[pixel_y_min:pixel_y_max, pixel_x_min:pixel_x_max, :] = img_area[y_min:y_max, x_min:x_max, :]
-    
-# Defining class to initialize variables
-class initializeVariables:
-    # Initialize Window Size
-    N = 120
-    
-    # Initialize Variance for Gaussian weighting
-    sigma = 50
-
     
     # Initialize camera variance
     cam_sigma = 0.05
     
     # Initialize Minimum window size
-
     min_N = 20 #10
     
     # Initialize Clustering variance
@@ -511,12 +420,11 @@ def solve(mu_F, Sigma_F, mu_B, Sigma_B, C, Sigma_C, alpha_init, maxIter = 50, mi
 
 
 #computeMSE
-
-def getMSE(alpha_val, gt_img):
-    gt_img = np.double(gt_img)
-    gt_img = gt_img[:, :, 0]
-    mse_val = np.mean(np.square(alpha_val/255 - gt_img/255))
-    return mse_val
+# def getMSE(alpha_val, gt_img):
+#     gt_img = np.double(gt_img)
+#     gt_img = gt_img[:, :, 0]
+#     mse_val = mean_squared_error(alpha_val, gt_img)
+#     return mse_val
 
 #computeSAD
 def getSAD(alpha_val, gt_img):
@@ -525,48 +433,178 @@ def getSAD(alpha_val, gt_img):
     sad_val = np.sum(np.abs(alpha_val - gt_img))
     return sad_val
 
- #compute execution time of the first 10 pictures
-def execution_time(func, images, num_images):
-   for i in range(10):
-    start_time = time.time()
-    matte = getBayesianMatte(images[i])
-    end_time = time.time()
-    execution_time = end_time - start_time
-    print(f"Execution time for image {i+1}: {execution_time:.4f} seconds")
+
+def load_images(folder_path, len_seq = 10):
+    """
+    loading image for testing timer
+    """
+    image_files = os.listdir(folder_path)
+    images = []
+    images_name = []
+    trimaps = []
+    count = 0
+    for file in image_files:
+        if count >= len_seq:
+            break
+        file_path = os.path.join(folder_path, file)
+
+        trimaps_path = os.path.join("Images","trimap_training_lowres","Trimap2", "{}".format(file))
+        if os.path.isfile(file_path):
+            try:
+                img = np.array(Image.open(file_path))
+                trimap = np.array(Image.open(trimaps_path))
+                images.append(img)
+                trimaps.append(trimap)
+                images_name.append(file)
+                count += 1
+                print(f"Loaded image: {file}")
+            except IOError:
+                print(f"Could not open file as an image: {file}")
+    return images, trimaps, images_name
+
+#compute execution time of the first 10 pictures
+def execution_time(images,trimaps, images_name):
+    """
+    calculate the execution_time of images
+    """
+    for i in range(len(images)):
+        start_time = time.time()
+        getBayesianMatte(images[i], trimaps[i], images_name[i])
+        end_time = time.time()
+        execution_time = end_time - start_time
+        print(f"Execution time for image {i+1}: {execution_time:.5f} seconds")
         
-        
- #composite image       
-def composite(alpha, foreground, background):
+def execution_longSeq(seqPath = "Images/input_training_lowres", len_seq = 10):
+    """
+    The timer testing flow
+    """
+    images, trimaps, images_name = load_images(seqPath,len_seq)
+    execution_time(images, trimaps, images_name)
+
+
+#composite image       
+def composite_Alex(alpha, foreground, background):
     # Convert the alpha matte to a 3-channel grayscale image
     alpha = np.repeat(alpha[:, :, np.newaxis], 3, axis=2)
-    
+
     # Compute the composite image
     composite = alpha * foreground + (1 - alpha) * background
-    
+
     # Clip the pixel values to the range [0, 1]
     composite = np.clip(composite, 0, 1)
-    
+
     # Display the composite image
     plt.imshow(composite)
     plt.axis('off')
     plt.show()
-    
+
     return composite
 
-def getMean(image, image_reference):
-    mse = np.sum(np.square(image - image_reference))/np.size(image)
-    return mse
+def save_images(alpha):
+    """
+    this defination is a function for save image of result
+    base_dir is the directory of result path
+    and it can save result in /base_dir/exp
+    Exp folder will be updated after executed each time
+    """
+    base_dir = 'Python/Result'
+    if not os.path.exists(base_dir):
+        os.mkdir(base_dir)
+    # find the last subdirectory with a name that matches the pattern "exp<suffix>"
+    sub_dirs = [d for d in os.listdir(base_dir) if os.path.isdir(os.path.join(base_dir, d))]
+    suffixes = [int(d.split('exp')[-1]) for d in sub_dirs if d.startswith('exp') and d.split('exp')[-1].isdigit()]
+    if suffixes:
+        next_suffix = max(suffixes) + 1
+    else:
+        next_suffix = 1
+    
+    # create the new subdirectory with the next suffix
+    sub_dir = 'exp{}'.format(next_suffix)
+    sub_dir_path = os.path.join(base_dir, sub_dir)
+    os.makedirs(sub_dir_path)
+    alpha = (alpha * 255).astype('uint8')
+    # create a PIL Image object from the NumPy array
+    pil_image = Image.fromarray(alpha)
+
+    # save the PIL Image object as a PNG file in the subdirectory
+    pil_image.save(os.path.join(sub_dir_path, 'alpha.png'))
+    return sub_dir_path
+
+def save_FG(sub_dir_path, image):
+    """
+    This function is to save the foreground of source image,
+    detele the background.
+    """
+    alpha_image = Image.open(os.path.join(sub_dir_path, 'alpha.png'))
+    alpha_array = np.array(alpha_image.convert('L'))
+
+    # create a new NumPy array for the foreground image by copying the original image and applying the alpha mask
+    foreground_array = np.zeros_like(np.array(image))
+    foreground_array[..., 0] = (image)[:,:,0] * (alpha_array / 255.0)
+    foreground_array[..., 1] = (image)[:,:,1] * (alpha_array / 255.0)
+    foreground_array[..., 2] = (image)[:,:,2] * (alpha_array / 255.0)
+
+    # create a PIL Image object from the foreground NumPy array
+    foreground_image = Image.fromarray(np.uint8(foreground_array))
+    foreground_image.save(os.path.join(sub_dir_path,'foreground.png'))
+    plt.imshow(foreground_image)
+    plt.show()
+    return foreground_array, alpha_array
+
+def composition(sub_dir_path, foreground_array, alpha_array):
+    """
+    This function is to do composition,
+    User can choose a new image as background
+    And the system will composite the foreground and new background
+    """
+    background_path = filedialog.askopenfilename(filetypes=[("Background Selection", "*.jpg;*.png;*.bmp")])
+    background_image = Image.open(background_path)
+    
+    background_array = np.array(background_image)
+
+    # resize the background array to the same shape as the foreground array
+    resized_background_array = np.array(Image.fromarray(np.uint8(background_image)).resize(foreground_array.shape[:2][::-1], resample=Image.Resampling.BILINEAR))
+
+
+    # create a new NumPy array for the composite image by blending the foreground and background images using the alpha mask
+    composition = np.zeros_like(foreground_array)
+    composition[..., 0] = resized_background_array[:,:,0] * (1.0 - alpha_array / 255.0) + foreground_array[:,:,0]
+    composition[..., 1] = resized_background_array[:,:,1] * (1.0 - alpha_array / 255.0) + foreground_array[:,:,1]
+    composition[..., 2] = resized_background_array[:,:,2] * (1.0 - alpha_array / 255.0) + foreground_array[:,:,2]
+
+    # create a PIL Image object from the composite NumPy array
+    composite_image = Image.fromarray(np.uint8(composition))
+    composite_image.save(os.path.join(sub_dir_path,'composition.png'))
+    plt.imshow(composition)
+    plt.show()
+    return composition
+
+    
+
+
 '''
 Main Function
 '''
-def main(img_name):
+def main(img_name = "GT01.png", user_selector = False, save = False, show_FG = False, compositing = False):
+    """
+    The default image is GT01.png, if set user_selector is True, 
+    the user can choose image by themselves.
+
+    Note: If user want to composite image, he must open 'save', 'show_FG' switch
+    """
     # Creating image object
     img_obj = initializeVariables()
     
     # Creating path
-    IMG_PATH = os.path.join("Images","input_training_lowres","{}.png".format(img_name))
-    TRIMAP_PATH = Image.open(os.path.join("Images","trimap_training_lowres", "Trimap2", "{}.png".format(img_name)))
-    
+    if not user_selector:
+        IMG_PATH = os.path.join("Images","input_training_lowres","{}".format(img_name))
+        TRIMAP_PATH = Image.open(os.path.join("Images","trimap_training_lowres", "Trimap2", "{}".format(img_name)))
+    else:
+        IMG_PATH = filedialog.askopenfilename(filetypes=[("Source Image Selection", "*.jpg;*.png;*.bmp")])
+        TRIMAP_PATH = filedialog.askopenfilename(filetypes=[("Trimap Selection", "*.jpg;*.png;*.bmp")])
+
+        TRIMAP_PATH = Image.open(TRIMAP_PATH)
+        
     image = np.array(Image.open(IMG_PATH))
     
     # Creating trimap path
@@ -575,39 +613,22 @@ def main(img_name):
     # Calculating alpha matte
     #for i in tqdm(range(101), desc="Generating Matte", ascii=False, ncols=75):
     alpha = getBayesianMatte(image, image_trimap,  img_name, img_obj.N, img_obj.sigma, img_obj.min_N) 
-    
-    # This GT is for SAD
-    GT_alpha = Image.open(os.path.join("Images","gt_training_lowres", "{}.png".format(img_name)))
-    
-    # This GT is for MSE
-    #GT_alpha = cv2.imread('Images/gt_training_lowres/GT27.png')[:, :, 1]
-    #GT_alpha = GT_alpha[:, :, 1]
-    GT_alpha = convertImage(GT_alpha)
-    filename = 'savedImage.jpg'
-    
-    #SAD_value = getSAD(alpha, GT_alpha)
-    MSE_value = getMean(alpha, GT_alpha)
-    
-    #print(SAD_value)
-    print(MSE_value)
-    #cv2.imwrite(filename, alpha)
+
     # Displaying alpha matte
-    #displayImage('Alpha Matte', alpha)
-    #displayImage('Foreground', F)
-    
-=======
-    min_N = 10
-    
-    # Initialize Clustering variance
-    clustering_variance = 0.90
-    
-    """ 
-        Function to calculate MSE
-        @FerniA
-    """
-def getMSE(alpha_val, gt_img):
-    gt_img = np.double(gt_img)
-    gt_img = gt_img[:, :, 0]
-    mse_val = compare_mse(alpha_val, gt_img)
-    return mse_val
+    displayImage('Alpha Matte', alpha)
+
+    if save:
+        sub_dir_path = save_images(alpha)
+        if show_FG:
+            foreground_array, alpha_array = save_FG(sub_dir_path, image)
+            foreground_image = Image.fromarray(foreground_array)
+            if compositing:
+                composition_img = composition(sub_dir_path, foreground_array, alpha_array)
+                f, axarr = plt.subplots(3,1)
+                axarr[0,0] = plt.imshow(alpha)
+                axarr[0,1] = plt.imshow(foreground_image)
+                axarr[0,2] = plt.imshow(composition_img)
+
+
+
 

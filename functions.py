@@ -11,8 +11,6 @@ import os
 from tqdm import tqdm
 import time
 from numba import jit 
-from skimage import *
-from skimage.metrics import mean_squared_error
 """
 Function to display Image
 Params:
@@ -23,13 +21,9 @@ Returns:
 """
 
 def displayImage(title, img):
-    #plt.show(img)
-    #plt.title(title)
-   # plt.show()
-    
-    cv2.imshow(title, img)
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
+    plt.imshow(img)
+    plt.title(title)
+    plt.show()
 
 """
     Function to create a MATLAB style fspecial('gaussian')
@@ -147,7 +141,7 @@ Function to get Bayesian matte
 
     
 '''
-def getBayesianMatte(img, trimap, name, N = 25,variance = 8,min_N = 10):
+def getBayesianMatte(img, trimap, name, N = 3,variance = 1,min_N = 10):
     image_trimap = np.array(ImageOps.grayscale(Image.open(os.path.join("Images","trimap_training_lowres","Trimap2", "{}.png".format(name)))))
 
     
@@ -155,168 +149,100 @@ def getBayesianMatte(img, trimap, name, N = 25,variance = 8,min_N = 10):
     img = convertImage(img)
     trimap = convertImage(trimap)
     
-    # Getting dimensions of the image
+    # Getting dimensions of images
     h,w,c = img.shape
     
     # Initializing Gaussian weighting
     gaussian_weights = fspecial((N,N),variance)
     gaussian_weights /= np.max(gaussian_weights)
 
-    # Initializing Foreground objects
-    foreground_map = trimap == 1
-    foreground_img = np.zeros((h,w,c))
-    foreground_img = img * np.reshape(foreground_map,(h,w,1))
+    # We seperate the foreground specified in the trimap from the main image.
+    fg_map = trimap == 1
+    fg_actual = np.zeros((h,w,c))
+    fg_actual = img * np.reshape(fg_map,(h,w,1))
 
-    # Initializig Background objects
-    background_map = trimap == 0
-    background_img = np.zeros((h,w,c))
-    background_img = img * np.reshape(background_map,(h,w,1))
+    # We seperate the background specified in the trimap from the main image. 
+    bg_map = trimap == 0
+    bg_actual = np.zeros((h,w,c))
+    bg_actual = img * np.reshape(bg_map,(h,w,1))
     
-    # Initializing Alpha channel
-    unknown_map = np.logical_or(foreground_map,background_map) == False
+    # Creating empty alpha channel to fill in by the program
+    unknown_map = np.logical_or(fg_map,bg_map) == False
     a_channel = np.zeros(unknown_map.shape)
-    a_channel[foreground_map] = 1
+    a_channel[fg_map] = 1
     a_channel[unknown_map] = np.nan
 
-    # Calculating total number of unknown points
-    unknown_points = np.sum(unknown_map)
+    # Finding total number of unkown pixels to be calculated
+    n_unknown = np.sum(unknown_map)
 
-    # Build list for unknown points
+    # Making the datastructure for finding pixel values and saving id they have been solved yet or not.
     A,B = np.where(unknown_map == True)
-    list_not_visited_points = np.vstack((A,B,np.zeros(A.shape))).T
+    not_visited = np.vstack((A,B,np.zeros(A.shape))).T
 
     print("Processing Image")
-    #for i in tqdm(range(100), desc="Generating Matte", ascii=False, ncols=75):
 
-    # Solving for unknown points
-    while(sum(list_not_visited_points[:,2]) != unknown_points):
-        
-        last_n = sum(list_not_visited_points[:,2])
+    # running till all the pixels are solved.
+    while(sum(not_visited[:,2]) != n_unknown):
+        last_n = sum(not_visited[:,2])
 
-        for i in range(unknown_points): 
-            
-            # Checking if points are in array
-            if list_not_visited_points[i,2] == 1:
+        # iterating for all pixels
+        for i in range(n_unknown): 
+            # checking if solved or not
+            if not_visited[i,2] == 1:
                 continue
             
+            # If not solved, we try to solve
             else:
+                # We get the location of the unsolved pixel
+                y,x = map(int,not_visited[i,:2])
                 
-                # Get location of unknown points
-                y,x = map(int,list_not_visited_points[i,:2])
-                
-                # Running window through alpha channel
-                alpha_window = runWindow(a_channel[:, :, np.newaxis], x, y, N)[:,:,0]
+                # Creating an window which states what pixels around it are solved(forground/background)
+                a_window = runWindow(a_channel[:, :, np.newaxis], x, y, N)[:,:,0]
                 
                 # Creating a window and weights of solved foreground window
-                foreground_window = runWindow(foreground_img,x,y,N)
-                foreground_weights = np.reshape(alpha_window**2 * gaussian_weights,-1)
-                
-                values_to_keep = np.nan_to_num(foreground_weights) > 0
-                
-                # Restructuring Foreground pixels
-                foreground_pixels = np.reshape(foreground_window,(-1,3))[values_to_keep,:]
-                foreground_weights = foreground_weights[values_to_keep]
+                fg_window = runWindow(fg_actual,x,y,N)
+                fg_weights = np.reshape(a_window**2 * gaussian_weights,-1)
+                values_to_keep = np.nan_to_num(fg_weights) > 0
+                fg_pixels = np.reshape(fg_window,(-1,3))[values_to_keep,:]
+                fg_weights = fg_weights[values_to_keep]
         
                 # Creating a window and weights of solved background window
-                background_window = runWindow(background_img,x,y,N)
-                background_weights = np.reshape((1-alpha_window)**2 * gaussian_weights,-1)
-                
-                values_to_keep = np.nan_to_num(background_weights) > 0
-                
-                # Restructuring Background pixels
-                background_pixels = np.reshape(background_window,(-1,3))[values_to_keep,:]
-                background_weights = background_weights[values_to_keep]
+                bg_window = runWindow(bg_actual,x,y,N)
+                bg_weights = np.reshape((1-a_window)**2 * gaussian_weights,-1)
+                values_to_keep = np.nan_to_num(bg_weights) > 0
+                bg_pixels = np.reshape(bg_window,(-1,3))[values_to_keep,:]
+                bg_weights = bg_weights[values_to_keep]
                 
                 # We come back to this pixel later if it doesnt has enough solved pixels around it.
-                if len(background_weights) < min_N or len(foreground_weights) < min_N:
+                if len(bg_weights) < min_N or len(fg_weights) < min_N:
                     continue
                 
                 # If enough pixels, we cluster these pixels to get clustered colour centers and their covariance    matrices
-                foreground_mean, foreground_covariance = clusterElements(foreground_pixels,foreground_weights)
-                background_mean, background_covariance = clusterElements(background_pixels,background_weights)
-                alpha_init = np.nanmean(alpha_window.ravel())
+                mean_fg, cov_fg = clusterElements(fg_pixels,fg_weights)
+                print(fg_pixels)
+                mean_bg, cov_bg = clusterElements(bg_pixels,bg_weights)
+                alpha_init = np.nanmean(a_window.ravel())
                 
-                # Solving for Foreground, Background and Alpha
-                calculated_foreground,calculated_background,calculated_alpha = solve(foreground_mean, 
-                                                                                     foreground_covariance,
-                                                                                     background_mean,
-                                                                                     background_covariance,
-                                                                                     img[y,x],
-                                                                                     0.7,
-                                                                                     alpha_init)
+                # We try to solve our 3 equation 7 variable problem with minimum likelihood estimation
+                fg_pred,bg_pred,alpha_pred = solve(mean_fg,cov_fg,mean_bg,cov_bg,img[y,x],0.7,alpha_init)
 
-                # Updating Foreground
-                foreground_img[y, x] = calculated_foreground.ravel()
-                
-                # Updating Background
-                background_img[y, x] = calculated_background.ravel()
-                
-                # Updating Alpha
-                a_channel[y, x] = calculated_alpha
-                
-                list_not_visited_points[i,2] = 1
-                if(np.sum(list_not_visited_points[:,2]) % 2000 == 0):
-                    print("Processing image to generate matte ...")
+                # storing the predicted values in appropriate windows for use for later pixels.
+                fg_actual[y, x] = fg_pred.ravel()
+                bg_actual[y, x] = bg_pred.ravel()
+                a_channel[y, x] = alpha_pred
+                not_visited[i,2] = 1
+                if(np.sum(not_visited[:,2])%1000 == 0):
+                    print("Solved {} out of {}.".format(np.sum(not_visited[:,2]),len(not_visited)))
                     pass
 
-        if sum(list_not_visited_points[:,2]) == last_n:
-            # Increasing window size
+        if sum(not_visited[:,2]) == last_n:
             N += 2
-            
-            # Increasing variance
             variance += 1 
-            
-            # Applying Gaussian weighting 
             gaussian_weights = fspecial((N,N),variance)
             gaussian_weights /= np.max(gaussian_weights)
+            #print(N)
+
     return a_channel
-=======
-from skimage.measure import compare_mse
-
-"""
-    Function to get Bayesian Matte
-    Params:
-        img - image
-        trimap - trimap
-        img_obj - image object containing parameters
-"""
-def getBayesianMatte(img, trimap, img_obj):
-    
-    # Setting masks for foreground, background and unknown
-    background_mask = (trimap == 0) # Background where trimap values = 0
-    foreground_mask = (trimap == 1) # Foreground where trimap values = 1
-    unknown_area_mask = ~(background_mask | foreground_mask) # If neither, then unknown
-    
-    # Initializing Foreground
-    F = img.copy()
-    F[~foreground_mask.repeat(3).reshape(foreground_mask.shape)] = 0
-
-    # Initializing Background
-    B = img.copy()
-    B[~background_mask.repeat(3).reshape(background_mask.shape)] = 0
-    
-    # Initializing Alpha channel
-    alpha_channel = np.zeros(trimap.shape)
-    alpha_channel[foreground_mask] = 1
-    alpha_channel[unknown_area_mask] = np.nan
-    
-    # Initializing unknown points
-    unknown_points = np.sum(unknown_area_mask)
-    
-    # Gaussian Weighting parameter
-    gaussian_weighting = gaussian(img_obj.N, img_obj.sigma).reshape(-1, 1) * gaussian(img_obj.N, img_obj.sigma).reshape(1, -1)
-    
-    # Normalizing gaussian weighting
-    gaussian_weighting = gaussian_weighting / np.max(gaussian_weighting)
-    
-    # square structuring element for eroding the unknown region(s)
-    se = square(3)
-    
-    n = 1
-    unknown_region=unknown_area_mask
-    iter = 1
-
-
 
 """
 Function to run a window
@@ -326,7 +252,6 @@ Params:
     N - window size
 """
 def runWindow(img_area, x, y, N):
-
     
     # Get image dimensions 
     height, width, channels = img_area.shape
@@ -352,57 +277,16 @@ def runWindow(img_area, x, y, N):
 # Defining class to initialize variables
 class initializeVariables:
     # Initialize Window Size
-    N = 121 #25 #120
+    N = 25 #120
     
     # Initialize Variance for Gaussian weighting
     sigma = 8; ###0.5
-=======
-    # Get dimensions of the image
-    [height, width, c] = img_area.shape
-    
-    # Initializing window size
-    half_win_size = math.floor(N / 2)
-    N_1 = half_win_size
-    N_2 = N - half_win_size - 1
-    
-    # Initializing window value
-    window_val = np.empty((N, N, c))
-    window_val[:] = np.nan
-    
-    # Setting min and max values for x-axis
-    x_min = max(1, x - N_1)
-    x_max = min(width, x + N_2)
-    
-    # Setting min and max values for y-axis
-    y_min = max(1, y - N_1)
-    y_max = min(height, y + N_2)
-    
-    # Getting pixel values for x coordinates (min and max)
-    pixel_x_min = half_win_size - (x - x_min) + 1 
-    pixel_x_max = half_win_size + (x_max - x) + 1
-    
-    # Getting pixel values for y coordinates (min and max)
-    pixel_y_min = half_win_size - (y - y_min) + 1 
-    pixel_y_max = half_win_size + (y_max - y) + 1
-    
-    # Setting window values
-    window_val[pixel_y_min:pixel_y_max, pixel_x_min:pixel_x_max, :] = img_area[y_min:y_max, x_min:x_max, :]
-    
-# Defining class to initialize variables
-class initializeVariables:
-    # Initialize Window Size
-    N = 120
-    
-    # Initialize Variance for Gaussian weighting
-    sigma = 50
-
     
     # Initialize camera variance
     cam_sigma = 0.05
     
     # Initialize Minimum window size
-
-    min_N = 20 #10
+    min_N = 10
     
     # Initialize Clustering variance
     clustering_variance = 0.05
@@ -458,6 +342,7 @@ def solve(mu_F, Sigma_F, mu_B, Sigma_B, C, Sigma_C, alpha_init, maxIter = 50, mi
             # Initializing last likelihood
             lastLike = -1.7977e+308
 
+            
             while True:
                 
                 # Solving the equation: Ax = b, where x has 3 values - RGB
@@ -472,7 +357,6 @@ def solve(mu_F, Sigma_F, mu_B, Sigma_B, C, Sigma_C, alpha_init, maxIter = 50, mi
                 b[3:] = np.reshape(invSigma_Bj @ mu_Bj + C*(1-alpha) * invsgma2,(3,1))
 
                 # Solving for X
-                
                 X = np.linalg.solve(A, b)
                 
                 # Store the calculated values into F and B vectors
@@ -509,53 +393,6 @@ def solve(mu_F, Sigma_F, mu_B, Sigma_B, C, Sigma_C, alpha_init, maxIter = 50, mi
                 # Returning optimal foreground, background and alpha values
     return fg_best, bg_best, a_best
 
-
-#computeMSE
-
-def getMSE(alpha_val, gt_img):
-    gt_img = np.double(gt_img)
-    gt_img = gt_img[:, :, 0]
-    mse_val = np.mean(np.square(alpha_val/255 - gt_img/255))
-    return mse_val
-
-#computeSAD
-def getSAD(alpha_val, gt_img):
-    gt_img = np.double(gt_img)
-    gt_img = gt_img[:, :, 0]
-    sad_val = np.sum(np.abs(alpha_val - gt_img))
-    return sad_val
-
- #compute execution time of the first 10 pictures
-def execution_time(func, images, num_images):
-   for i in range(10):
-    start_time = time.time()
-    matte = getBayesianMatte(images[i])
-    end_time = time.time()
-    execution_time = end_time - start_time
-    print(f"Execution time for image {i+1}: {execution_time:.4f} seconds")
-        
-        
- #composite image       
-def composite(alpha, foreground, background):
-    # Convert the alpha matte to a 3-channel grayscale image
-    alpha = np.repeat(alpha[:, :, np.newaxis], 3, axis=2)
-    
-    # Compute the composite image
-    composite = alpha * foreground + (1 - alpha) * background
-    
-    # Clip the pixel values to the range [0, 1]
-    composite = np.clip(composite, 0, 1)
-    
-    # Display the composite image
-    plt.imshow(composite)
-    plt.axis('off')
-    plt.show()
-    
-    return composite
-
-def getMean(image, image_reference):
-    mse = np.sum(np.square(image - image_reference))/np.size(image)
-    return mse
 '''
 Main Function
 '''
@@ -576,38 +413,6 @@ def main(img_name):
     #for i in tqdm(range(101), desc="Generating Matte", ascii=False, ncols=75):
     alpha = getBayesianMatte(image, image_trimap,  img_name, img_obj.N, img_obj.sigma, img_obj.min_N) 
     
-    # This GT is for SAD
-    GT_alpha = Image.open(os.path.join("Images","gt_training_lowres", "{}.png".format(img_name)))
-    
-    # This GT is for MSE
-    #GT_alpha = cv2.imread('Images/gt_training_lowres/GT27.png')[:, :, 1]
-    #GT_alpha = GT_alpha[:, :, 1]
-    GT_alpha = convertImage(GT_alpha)
-    filename = 'savedImage.jpg'
-    
-    #SAD_value = getSAD(alpha, GT_alpha)
-    MSE_value = getMean(alpha, GT_alpha)
-    
-    #print(SAD_value)
-    print(MSE_value)
-    #cv2.imwrite(filename, alpha)
     # Displaying alpha matte
-    #displayImage('Alpha Matte', alpha)
-    #displayImage('Foreground', F)
+    displayImage('Alpha Matte', alpha)
     
-=======
-    min_N = 10
-    
-    # Initialize Clustering variance
-    clustering_variance = 0.90
-    
-    """ 
-        Function to calculate MSE
-        @FerniA
-    """
-def getMSE(alpha_val, gt_img):
-    gt_img = np.double(gt_img)
-    gt_img = gt_img[:, :, 0]
-    mse_val = compare_mse(alpha_val, gt_img)
-    return mse_val
-
