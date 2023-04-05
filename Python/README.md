@@ -37,8 +37,7 @@ python engine.py --run
 ```
 
 # Algorithm Design
-
-# Results
+The algorithm design is based on the paper by Y. Chuang et al. The design can be shown using a flowchart.
 
 # Quality Metrics
 ### Visualizing SAD values
@@ -106,6 +105,7 @@ The testing of this application has been divided into 4 blocks.
 * Testing if the displayed image matches the input image
 * Testing the clustering algorithm on a normal variances
 ## UAT Tests
+The UAT tests were built using Atlassian and Jira and can be found on https://atomicreactors.atlassian.net/l/cp/yoUxiYWD 
 
 # Acknowledgments
 The group would like to thank the following members of the community:
