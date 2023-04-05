@@ -26,13 +26,60 @@ To use the interface version, type in the following command:
 ```
 python engine.py
 ```
+### Running the application
+To start the application, type in the following command:
+```
+python engine.py -r
+```
+or 
+```
+python engine.py --run
+```
 
 # Algorithm Design
 
 # Results
 
 # Quality Metrics
+### Visualizing SAD values
+The SAD values can be visualized using the following command:
+```
+python engine.py -s
+```
+or 
+```
+python engine.py --sad
+```
 
+### Visualizing MSE values
+The MSE values can be visualized using the following command:
+```
+python engine.py -m
+```
+or 
+```
+python engine.py --mse
+```
+
+### Visualizing execution time
+The execution time can be visualized using the following command:
+```
+python engine.py -t
+```
+or 
+```
+python engine.py --time
+```
+
+### Visualizing PSNR
+The PSNR values can be visualized using the following command:
+```
+python engine.py -p
+```
+or 
+```
+python engine.py --psnr
+```
 # Testing
 The testing of this application has been divided into 4 blocks.
 ## Unit Tests
