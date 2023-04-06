@@ -124,6 +124,7 @@ In particular it can be seen that the results of GT04 were the worst in all cate
 The following graph shows the relationship between PSNR and Execution Time, it can be seen how the PSNR assumes a decreasing pattern as the execution time increases.
 
 * photo psnr vs execution time
+<img src="allmetrics.png" width="850">
 
 # Acknowledgments
 The group would like to thank the following members of the community:
