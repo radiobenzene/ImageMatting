@@ -79,6 +79,7 @@ or
 ```
 python engine.py --psnr
 ```
+
 # Testing
 The testing of this application has been divided into 4 blocks.
 ## Unit Tests
@@ -106,6 +107,23 @@ The testing of this application has been divided into 4 blocks.
 * Testing the clustering algorithm on a normal variances
 ## UAT Tests
 The UAT tests were built using Atlassian and Jira and can be found on https://atomicreactors.atlassian.net/l/cp/yoUxiYWD 
+
+# Results
+To evaluate the performance of our algorithm, we used the following quantities as quality metrics:
+* Mean Squared Error (MSE)
+* Sum of Absolute Differences (SAD)
+* Peak to Signal Ratio (PSNR)
+* Execution Time
+
+In the following table the results of the first 10 iterations of the code have been grouped (a total of 27 pictures were used to train the algorithm). 
+* table picture
+
+In particular it can be seen that the results of GT04 were the worst in all categories. This happens because the photo represents two troll muppets with upturned hair, since these are very fine details, they increase the number of unknown points inside the matte and therefore the algorithm itself takes much more time and effort to return the 'alpha matte.
+* photo  gt04
+
+The following graph shows the relationship between PSNR and Execution Time, it can be seen how the PSNR assumes a decreasing pattern as the execution time increases.
+
+* photo psnr vs execution time
 
 # Acknowledgments
 The group would like to thank the following members of the community:
